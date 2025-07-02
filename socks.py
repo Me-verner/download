@@ -35,6 +35,7 @@ try:
     from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn, TimeElapsedColumn
     from rich.table import Table
     from rich.panel import Panel
+    from rich.live import Live
     RICH_AVAILABLE = True
 except ImportError:
     RICH_AVAILABLE = False
@@ -44,6 +45,7 @@ except ImportError:
         from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn, TimeElapsedColumn
         from rich.table import Table
         from rich.panel import Panel
+        from rich.live import Live
         RICH_AVAILABLE = True
     except Exception:
         RICH_AVAILABLE = False
@@ -1064,6 +1066,50 @@ class CompleteSSHTunnelSOCKS5Manager:
         self.tunnels.clear()
         self.log("info", "All tunnels and SOCKS5 proxies stopped")
     
+    def get_status_table(self):
+        """Get status table for Live display"""
+        if not RICH_AVAILABLE:
+            return None
+            
+        table = Table(title="🚇🧦 SSH Tunnels + SOCKS5 Proxies Status", show_header=True, header_style="bold magenta")
+        table.add_column("Tunnel Port", style="cyan", width=12)
+        table.add_column("SSH Status", width=12)
+        table.add_column("SOCKS5 Port", style="yellow", width=12)
+        table.add_column("SOCKS5 Status", width=15)
+        table.add_column("Uptime", style="green", width=10)
+        
+        for port, tunnel in sorted(self.tunnels.items()):
+            ssh_status_color = {
+                TunnelStatus.RUNNING: "green",
+                TunnelStatus.STARTING: "yellow",
+                TunnelStatus.FAILED: "red",
+                TunnelStatus.UNHEALTHY: "orange1",
+                TunnelStatus.RECOVERING: "blue",
+                TunnelStatus.STOPPED: "dim"
+            }.get(tunnel.status, "white")
+            
+            ssh_status_text = f"[{ssh_status_color}]{tunnel.status.value.title()}[/{ssh_status_color}]"
+            
+            socks5_status_color = {
+                SOCKS5Status.RUNNING: "green",
+                SOCKS5Status.STARTING: "yellow",
+                SOCKS5Status.FAILED: "red",
+                SOCKS5Status.UNHEALTHY: "orange1",
+                SOCKS5Status.STOPPED: "dim"
+            }.get(tunnel.socks5_status, "white")
+            
+            socks5_status_text = f"[{socks5_status_color}]{tunnel.socks5_status.value.title()}[/{socks5_status_color}]"
+            
+            table.add_row(
+                str(port),
+                ssh_status_text,
+                str(tunnel.socks5_port) if tunnel.socks5_port else "N/A",
+                socks5_status_text,
+                tunnel.uptime_str
+            )
+        
+        return table
+
     def show_status(self):
         if RICH_AVAILABLE and self.console:
             table = Table(title="🚇🧦 SSH Tunnels + SOCKS5 Proxies Status", show_header=True, header_style="bold magenta")
@@ -1231,10 +1277,10 @@ def main():
                 manager.start_monitoring()
                 
                 try:
-                    if RICH_AVAILABLE:
-                        with Live(refresh_per_second=0.5, console=manager.console) as live:
+                    if RICH_AVAILABLE and manager.console:
+                        with Live(manager.get_status_table(), refresh_per_second=0.5, console=manager.console) as live:
                             while manager.monitoring:
-                                live.update(manager.show_status())
+                                live.update(manager.get_status_table())
                                 time.sleep(2)
                     else:
                         manager.log("info", "🔍 Monitoring started. Press Ctrl+C to stop.")
