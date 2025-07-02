@@ -783,9 +783,9 @@ class CompleteSSHTunnelSOCKS5Manager:
     
     def __init__(self):
         # Configuration
-        self.iranian_ip = "85.133.250.29"
+        self.iranian_ip = "94.182.150.195"
         self.iranian_user = "root"
-        self.iranian_pass = "hf_KWQypu"
+        self.iranian_pass = "auM2FIvS11OJ"
         self.ssh_port = 22
         self.base_socks5_port = 8880  # Base port for SOCKS5 proxies
         self.log_file = Path("/var/log/ssh_socks5_manager.log")
